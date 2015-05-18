@@ -102,7 +102,7 @@ require("path/to/loom" function(Loom) {
 <section>
 <h2>Form tags</h2>
 <p>Form tags should be given a class of .loom-form. omitting this class means loom will ignore the form, making it easy to have loom and non-loom forms side by side in a project.</p>
-<p>Forms should have a "novalidate" attribute to prevent html5 validation from interfering with loom's operation.
+<p>A "novalidate" attribute is added to forms by loom to prevent html5 validation from interfering with loom's operation.
 <p>Forms should have an ID wherever possible, internal indexing using unique id's is much more reliable and less resource intensive than other methods</p>
 <p>loom adds the following behaviour to a form with a "loom-form" class:</p>
 <ul>
@@ -174,8 +174,7 @@ Loom reads the standard form action attribute to get the URL of where to post th
 </ul>
 <p>Forms can obviously be styled based on their state in your own css (e.g. subtle red background for a form in an error state, green for a form in a success state etc.)
 <p class="note">FUTURE VERSIONS: 
-    It might be worth conceptually separating the two error states of: "We couldn't access the url / something went wrong so we didn't get a response" from "everything worked, but the server sent an error message to us i.e. 'Could not create account, that email address is in use' ". I can think of a lot of cases where you'd want to treat these two differently.<br/>
-    Candidate names might be ".server-error" for cases of 404's, failing to process a response etc. and just '.error' where we got a response but it communicates an error.
+    We will add form attributes to automatically display loom alerts for hard-errors, basically to alert the user / developer to the fact that something technical went wrong with the form post.
 </p>
 </section><section>
 <h2>Form Messages</h2>
@@ -204,18 +203,18 @@ Loom requires that form HTML adheres to a certain style which is as follows:
 </p>
 <ul>
     <li>Inputs are wrapped inside divs with a class of "input-field"<br/> <strong>Inputs not inside a ".input-field" div will be ignored by loom and won't be posted.</strong></li>
-    <li>All inputs have labels with a "for" attribute equal to the name of the associated input.</li>
+    <li>All inputs have labels with a "for" attribute equal to the name of the associated input, as per the HTML spec.</li>
     <li>All inputs have a name that is unique within the form</li>
     <li>inputs, selects, and textareas should be outside of their labels.</li>
     <li>checkboxes and radio buttons may be either wrapped in or outside of their labels.</li>
-    <li>inputs must have a type attribute.</li>
+    <li>inputs must have a type attribute, if unsure, use type='text'</li>
     <li>If the form is to be posted, it has a button with a type="submit".</li>
     <li>A button with a type="reset" may be present in addition which will reset the form when pressed.</li>
 </ul>
 </section>
 <section>
     <h2>Input tags</h2>
-    <p>data-loom attributes can be added to the input tags to specify certain behaviours. In the case of multiple inputs within an .input-field container (detailed later) these attributes should be placed on the first tag to occur.
+    <p>data-loom attributes can be added to the input tags ('input', 'select', 'textarea') to specify certain behaviours. In the case of multiple inputs within an .input-field container (detailed later) these attributes should be placed on the first tag to occur.
     <h3>data-loom-type</h3>
     <p>this supercedes the html 'type' attribute for the purpose of loom determining the type of the input. In this way loom also supports custom types with different default validators and behaviours. The types currently supported are:</p>
     <ul>
@@ -389,11 +388,11 @@ Loom requires that form HTML adheres to a certain style which is as follows:
     </form>
    </div>
    <p class="note">
-    NFUTURE VERSIONS: in future, several control implementations can be made and selected / added via the value of this attribute. e.g. data-loom-controls="inc-dec-buttons" or data-loom-controls="inc-dec-buttons|zero-button".
+    FUTURE VERSIONS: in future, several control implementations can be made and selected / added via the value of this attribute. e.g. data-loom-controls="inc-dec-buttons" or data-loom-controls="inc-dec-buttons|zero-button".
    </p>
    <h3>data-loom-populate-on-select / data-loom-populate-field</h3>
    <p><b>SELECTs only</b></p>
-   <p>This attribute specifies that when the select value is changed, it should populate a series of other inputs based on data attributes on the option that was selected. This is typically used for address selections, where the user selects an address via its name from a select dropdown, and then the specific inputs underneath (Address Line 1: City: Zipcode: ) are populated with the values for that address</p>
+   <p>This attribute specifies that when the select value is changed, it should populate a series of other inputs based on data attributes on the option that was selected. This is typically used for address selections, where the user selects an address via its name from a select dropdown, and then the specific inputs underneath (Address Line 1, City, Zipcode, etc.) are populated with the values for that address</p>
    <p>Any value for this attribute causes the behaviour described.</p>
    <p>In addition to data-loom-populate-on-select on the select, the option elements also need data-loom-populate-field-%fieldname% attributes</p>
    <p>There will be serveral of these attributes on each option.. one for each of the fields being 'copied to' or populated when that option is selected.</p>
