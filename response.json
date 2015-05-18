@@ -7,7 +7,7 @@
         "html" : "<div id='test-append'><span style='color:#f44'>This is text from the server, innerHTML directive means that it was stripped from its container<br/></span></div><div id='test-replace'><span style='color:#F44'>This is text from the server, method : replace means it will replace the text that was here.</span></div>",
         "meta" : {
             "message" : {
-                "content" : "This is some error text from the server",
+                "content" : "This is some error text from the server, displayed in a loomAlert",
                 "message_type" : "persistent" 
             },
             "redirect_url" : "" ,
