@@ -9,6 +9,50 @@
 <body>
 
 <section>
+<h1>Loom Alerts</h1>
+<p>Loom alerts is a simple library with a javscript API for displaying alerts to users</p>
+</section>
+<section>
+<h2>Setup</h2>
+<p>make sure the loomAlerts.js folder is in your /js/loom folder for the project.</p>
+<p>Require loomAlerts wherever you need to use it:</p>
+<code><pre>
+require(["loom/loomAlerts"], function(Alerts) {
+    //your code in here.
+});
+</pre></code>
+<p>In addition, @include the CSS from your main less stylesheet.</p>
+<p>If you have included the base loom stylesheet, then loomAlerts.less will already be included.</p>
+<code><pre>
+@include "loom/loomAlerts";
+</pre></code>
+<p>or</p>
+<code><pre>
+@include "loom/loom"; //loom alerts is included by the main loom stylesheet.
+</pre></code>
+</section>
+<section>
+<h2>API</h2>
+<h3>showSuccessMessage(messageHTMLOrText)</h3>
+<p>Shows a success message, that will fade out after a second</p>
+<p>Try It:</p>
+<button class="showSuccessMessage">Show Message</button>
+<h3>showErrorMessage(messageHTMLOrText)</h3>
+<p>Shows an error message, that will fade out after a second</p>
+<p>Try It:</p>
+<button class="showErrorMessage">Show Message</button>
+<h3>showPersistentSuccessMessage(messageHTMLOrText)</h3>
+<p>Shows a success message, that will remain until the use clicks OK to dismiss it.</p>
+<p>Try It:</p>
+<button class="showPersistentSuccessMessage">Show Message</button>
+<h3>showPersistentErrorMessage(messageHTMLOrText)</h3>
+<p>Shows an error message, that will remain until the use clicks OK to dismiss it.</p>
+<p>Try It:</p>
+<button class="showPersistentErrorMessage">Show Message</button>
+</section>
+
+
+<section>
 <h1>Loom Forms</h1>
 <p>Loom forms is a library to handle form validation and submission</p>
 <p>It follows a few simple principles in its design</p>
@@ -24,6 +68,10 @@
 </section>
 <section>
 <h2>TESTING: loomResponseHandler</h2>
+<p class="note">
+Under Development
+</p>
+
 <div class="example">
     <form class="loom-form" action="/response.json" data-loom-data-type="json" id="ResponseHandlerTest">
         <div class="input-field">

@@ -105,8 +105,13 @@ define(["jquery", "./form"],function($, Form){
         //takes a jquery form element, or an ID, and returns the loomForm instance associated with that form (if one exists).
         function getForm(formOrId) {
             if (typeof formOrId == 'string') {
-                if (formOrId in forms) {
-                    return forms[formOrId];
+                var lookupId = formOrId;
+                if (formOrId.indexOf("#") == 0) { //strip leading '#' from jquery style id's
+                    lookupId = formOrId.substring(1,formOrId.length);
+                }
+                
+                if (lookupId in forms) {
+                    return forms[lookupId];
                 }
                 return false;
             } else {

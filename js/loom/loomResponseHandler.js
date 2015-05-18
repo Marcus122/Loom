@@ -139,13 +139,13 @@ define(["jquery", "loom/loomAlerts"], function($, alerts){
                 if (!isPersistent) {
                     alerts.showErrorMessage(content);
                 } else {
-                    alerts.showPersistantErrorMessage(content);
+                    alerts.showPersistentErrorMessage(content);
                 }
             } else {
                 if (!isPersistent) {
                     alerts.showSuccessMessage(content);
                 } else {
-                    alerts.showPersistantErrorMessage(content);
+                    alerts.showPersistentErrorMessage(content);
                     
                 }
             } 

@@ -37,14 +37,16 @@ define(["jquery"],function($){
         }
         
         function showSuccessMessage(message, options) {
+            cleanUpDom();
             showMessage("success", message, options);
         }
         
         function showErrorMessage(message, options) {
+            cleanUpDom();
             showMessage("error", message, options);
         }
         
-        function showPersistantErrorMessage(message, options) {
+        function showPersistentErrorMessage(message, options) {
             cleanUpDom();
             var message = $("<div class='loom-alert loom-alert-with-controls error'><p>" + message + "</p></div>");
             var controls = $("<div class='controls'><button class='secondary mini' >OK</button></div>");
@@ -54,7 +56,7 @@ define(["jquery"],function($){
             $(".loom-alert .controls button").click(function() {message.fadeOut();});
         }
         
-        function showPersistantSuccessMessage(message, options) {
+        function showPersistentSuccessMessage(message, options) {
             cleanUpDom();
             var message = $("<div class='loom-alert loom-alert-with-controls success'><p>" + message + "</p></div>");
             var controls = $("<div class='controls'><button class='secondary mini' >OK</button></div>");
@@ -101,8 +103,8 @@ define(["jquery"],function($){
             showErrorMessage:showErrorMessage,
             showInfoMessage:showInfoMessage,
             showConfirmMessage:showConfirmMessage,
-            showPersistantErrorMessage:showPersistantErrorMessage,
-            showPersistantSuccessMessage:showPersistantSuccessMessage
+            showPersistentErrorMessage:showPersistentErrorMessage,
+            showPersistentSuccessMessage:showPersistentSuccessMessage
 		}
 	
 });
