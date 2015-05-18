@@ -1,0 +1,90 @@
+
+@success-message-background: #efefef;
+@success-message-foreground: #333;
+@success-message-image-url: "/images/site/success-icon.png";
+
+@info-message-background: #efefef;
+@info-message-foreground: #333;
+@info-message-image-url: "";
+
+@error-message-background: #efefef;
+@error-message-foreground: #333;
+@error-message-image-url: "/images/site/error-icon.png";
+
+@wait-message-background:#efefef;
+@wait-message-foreground:#333;
+@wait-message-image-url: "/images/site/loading-icon.png";
+
+@alert-width : 300px;
+
+.loom-alert {
+    position:fixed;
+    z-index:10000;
+    box-sizing:border-box;
+    width:@alert-width;
+    margin-left: -1 * @alert-width / 2 ;
+    left:50%;
+    top:120px;
+    top:35vh;
+    text-align:center;
+    background-repeat:no-repeat;
+    outline:2000px solid rgba(0,0,0,0.3);
+     p{
+            }
+    &.success {
+        background-color:@success-message-background;
+        color:@success-message-foreground;
+        background-image:url(@success-message-image-url);
+        p {
+            
+        }
+    }
+    &.error {
+        background-color:@error-message-background;
+        color:@error-message-foreground;
+        background-image:url(@error-message-image-url);
+        p {
+            
+        }
+    }
+    &.info {
+        background-color:@info-message-background;
+        color:@info-message-foreground;
+        background-image:url(@info-message-image-url);
+        p {
+            
+        }
+    
+    }
+    &#wait {//the global wait 
+        background-color:@wait-message-background;
+        color:@wait-message-foreground;
+        background-image:url(@wait-message-image-url);
+        p {
+            
+        }
+    
+    }
+    .controls{
+        text-align:right;
+        button {
+            margin-left:10px;
+        }
+    }
+}
+
+#wait {
+    display:none;
+}
+body.wait #wait{
+    display:block;
+}
+
+.loom-alert.loom-alert-with-controls{
+    p {
+        text-align:left;
+    }
+
+} 
+    
+    

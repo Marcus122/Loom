@@ -1,0 +1,1202 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+ <link href="/css/style.less" rel="stylesheet/less" type="text/css">
+ <script src="/js/static/less.min.js"></script>
+ <script data-main="/js/main" src="js/require.js"></script>
+ 
+</head>
+<body>
+
+<section>
+<h1>Loom Forms</h1>
+<p>Loom forms is a library to handle form validation and submission</p>
+<p>It follows a few simple principles in its design</p>
+<ul>
+    <li>Form HTML should be largely standardized (details are outlined below). This makes working on forms across projects easier, removes issues like HTML validation errors and means forms can be re-used across projects.</li>
+    <li>Validation specifiers should live with the HTML in the tags. This removes the need to jump back and forth between HTML files and JS files when working with forms. Validation rules can be added at the same time as inputs in the HTML.</li>
+    <li>Most validators, and a lot of form behaviour, should be common across all projects. No one should be searching for regexs for creditcard validation for exmaple. These are problems we should solve once and re-use everywhere.</li>
+    <li>Validation messages should live in the HTML, not in javascript files. This makes multi-language sites much easier to handle, and avoids the headache of html living in javascript strings spread throughout a project.</li>
+    <li>We should assume default behaviours, and not require any additional javascript to perform these defaults. e.g. display any validation messages, once valid post up the form via AJAX, displaying any error messages we get back from the server. Such a typical use case should not require any additional javascript.</li>
+    <li>Loom should have JS hooks to add custom behaviour where required. These are detailed later</li>
+    <li>By default forms should submit via AJAX. This allows us to give the user timely feedback, and avoids refreshing a page to show any errors.</li>
+</ul>
+</section>
+<section>
+<h2>TESTING: loomResponseHandler</h2>
+<div class="example">
+    <form class="loom-form" action="/response.json" data-loom-data-type="json" id="ResponseHandlerTest">
+        <div class="input-field">
+            <label for="test">Just an input</label>
+            <input name="test" value="some value" type="text" />
+        </div>
+        <div class="input-field submit">
+            <button type="submit">Try it</button>
+        </div>
+    </form>
+    <div id="test2">This text should be replaced by text from the server</div>
+    <div id="test1">The server response should append text to this div.<br/></div>
+</div>
+</section>
+<section>
+<h2>Set Up</h2>
+<p>the loom folder containing the js should be dropped into the projects /js folder. The css folder including the .less files should be dropped into the projects /css folder.</p>
+<p>In your main less file you should import loom</p>
+<code>@import "loom/loom";</code>
+<p>In the javscript, loom should be required and an instance created anywhere during page load with the following code:</p>
+<code>
+require("path/to/loom" function(Loom) { 
+    var myLoomInstance = new Loom();
+  });
+</code>
+<p>Loom is a singleton so multiple instantiations are fine, just 'require' it whenever you need it.</p>
+</section>
+<section>
+<h2>Form tags</h2>
+<p>Form tags should be given a class of .loom-form. omitting this class means loom will ignore the form, making it easy to have loom and non-loom forms side by side in a project.</p>
+<p>Forms should have a "novalidate" attribute to prevent html5 validation from interfering with loom's operation.
+<p>Forms should have an ID wherever possible, internal indexing using unique id's is much more reliable and less resource intensive than other methods</p>
+<p>loom adds the following behaviour to a form with a "loom-form" class:</p>
+<ul>
+    <li>User input is validated as field values are changed (jQuery onChange). This behaviour is described in detail in the input-field section of this document</li>
+    <li>A form with invalid fields cannot be submitted</li>
+    <li>Loom will cause the form to be submitted via ajax.</li>
+    <li>Loom will add classes to the form to reflect it's state.</li>
+</ul>
+<p>There are a number of additional attributes that can be added to a form to control it's behaviour.</p>
+<h3>data-loom-action</h3>
+<p>
+specifies the value for an additional action parameter that will be posted up along with the form. Used on many weave projects. The string value of this attribute will be added to the values posted up by the form with a name of 'action'. I.e. "action=login". default is blank.
+</p>
+<h3>data-loom-data-type</h3>
+<p>
+Specifies the type of <b>return</b> data expected from the AJAX post. default is "json". Usually this value will be "json", "xml" or "html".
+</p>
+<h3>data-loom-no-submit</h3>
+<p>
+Any value permanently prevents the form from being submitted, although validation will still fire as normal. Useful in some cases where data is programatically pulled from the input fields, but you still want the benefits of validation without loom ever actually submitting the form.
+</p>
+<h3>data-loom-disabled</h3>
+<p>
+Any value disables the form on load. If a text value other than 'true' is used, this value is used in a closest selector when the form is diabled to add a 'disabled' class to a surrounding element. e.g. adding data-loom-disabled="section" will cause the section containing the form to receive a class of 'disabled' on page load.<br/>
+The form is disabled by adding a disabled="disabled" attribute to every input, textarea and select per the HTML spec.</br>
+In addition, the submit button is changed to an 'edit' button. When this is clicked, the form is enabled again.
+</p>
+<h3>data-loom-disable-on-success</h3>
+<p>As above, but the form is only disabled after a successful submission.</p>
+<h3>data-loom-reset-on-success</h3>
+<p>The form is reset after a successful submission. All inputs are reset to blank, and all validation states are cleared.</p>
+<h3>action</h3>
+<p>
+Loom reads the standard form action attribute to get the URL of where to post the form.
+</p>
+</section>
+<section>
+<h2>Form States</h2>
+<p>Loom specifies the form state by adding classes to the form when these states occur. The form states are</p>
+<ul>
+<li><b>Pending (.form-pending):</b> Between the submit button being clicked and and one of the following occuring, the form has a state of pending.
+    <ul>
+        <li>Validation fails preventing the form being submitted.</li>
+        <li>The form post times out.</li>
+        <li>A response (success or error) is received from the server and callbacks have been called.</li>
+    </ul>
+</li>
+<li><b>Invalid (.form-invalid):</b> If a submit is attempted and input elements fail validation, the form is in an invalid state. This state is removed only after another submission where validation passes.
+</li>
+<li>
+    <b>Success (.form-success):</b> The form is in a success state after the form is submitted and a response is received from the server with no .error detected
+</li>
+<li><b>Error (.form-error):</b> The form is in an error state after the form is submitted and: <ul>
+        <li>There is an error processing the response.. e.g wrong data type.</li>
+        <li>The json response has .error set (this will soon be expanded to look for error nodes in XML responses)</li>
+        <li>There is a 404, 500 or some other error accessing the URL.</li></ul>
+</li>
+<li><b>'Hard' Error (.form-hard-error)</b> In addition to an .error class, forms receive a hard error class if:<ul>
+    <li>There is an error processing the response, e.g. wrong data type</li>
+    <li>There is a 404, 500, timeout or some other error accessing the URL</li>
+    </ul>
+    In other words, a hard error indicates that a <em>technical</em> error occured meaning we were unable to get a properly formatted json, XML or HTML response from the server.
+</li>
+<li><b>'Soft' Error (.form-soft-error)</b> In addition to a .error class, forms receive a soft error class if:
+<ul><li>A response from the server was received, but the response indicated an error (e.g. .error set on the response).</li></ul>
+<li>
+    <b>Disabled (.disabled):</b> The form is in a disabled state if it was programatically disabled by loom, either via the javascript API (described later) or due to behaviour based on a data-loom- attribute causing the form to be disabled.
+</li>
+</ul>
+<p>Forms can obviously be styled based on their state in your own css (e.g. subtle red background for a form in an error state, green for a form in a success state etc.)
+<p class="note">FUTURE VERSIONS: 
+    It might be worth conceptually separating the two error states of: "We couldn't access the url / something went wrong so we didn't get a response" from "everything worked, but the server sent an error message to us i.e. 'Could not create account, that email address is in use' ". I can think of a lot of cases where you'd want to treat these two differently.<br/>
+    Candidate names might be ".server-error" for cases of 404's, failing to process a response etc. and just '.error' where we got a response but it communicates an error.
+</p>
+</section><section>
+<h2>Form Messages</h2>
+<p>Form messages allow you to display messages based on the current state of the form.</p>
+<p>Form messages are added in a div with class ".form-messages" that should be a direct child of the form element.</p>
+<p>Within the div should be p elements with classes of</p>
+<ul>
+<li>form-pending-message (displayed in .pending state)</li>
+<li>form-error-message (displayed in .error state)</li>
+<li>form-success-message (displayed in .success state)</li>
+<li>form-invalid-message (displayed in .invalid state)</li>
+<li>form-disabled-message (displayed in .disabled state)</li>
+</ul>
+<p>
+By default, rules in the loom.less file hide these messages until the form is in the correct state, at which point they are simply shown. They can be styled as required in your own stylesheet.
+</p>
+<p class="note">FUTURE VERSIONS:
+Future versions may include some attribute options to display some of these messages as dismissable or transient alerts rather than just a message that appears on the form. In this case javascript would be added to pull the text out of these error p tags and load them into an alert for the user. A canditate attribute name might be data-loom-messages-as-alerts on the form tag. value could be a pipe separated list of message classes that loom should pull the text out of and display as alerts whenever the form enters that state.. e.g.
+data-loom-messages-as-alerts="success|error"
+</p>
+</section>
+<section>
+<h2>Input Fields</h2>
+<p>
+Loom requires that form HTML adheres to a certain style which is as follows:
+</p>
+<ul>
+    <li>Inputs are wrapped inside divs with a class of "input-field"<br/> <strong>Inputs not inside a ".input-field" div will be ignored by loom and won't be posted.</strong></li>
+    <li>All inputs have labels with a "for" attribute equal to the name of the associated input.</li>
+    <li>All inputs have a name that is unique within the form</li>
+    <li>inputs, selects, and textareas should be outside of their labels.</li>
+    <li>checkboxes and radio buttons may be either wrapped in or outside of their labels.</li>
+    <li>inputs must have a type attribute.</li>
+    <li>If the form is to be posted, it has a button with a type="submit".</li>
+    <li>A button with a type="reset" may be present in addition which will reset the form when pressed.</li>
+</ul>
+</section>
+<section>
+    <h2>Input tags</h2>
+    <p>data-loom attributes can be added to the input tags to specify certain behaviours. In the case of multiple inputs within an .input-field container (detailed later) these attributes should be placed on the first tag to occur.
+    <h3>data-loom-type</h3>
+    <p>this supercedes the html 'type' attribute for the purpose of loom determining the type of the input. In this way loom also supports custom types with different default validators and behaviours. The types currently supported are:</p>
+    <ul>
+        <li><strong>hidden</strong> (also supported in the normal 'type' attribute)</li>
+        <li><strong>text</strong> (also supported in the normal 'type' attribute)</li>
+		<li><strong>date</strong> (also supported in the normal 'type' attribute)</li>
+        <li><strong>month</strong> (also supported in the normal 'type' attribute)</li>
+        <li><strong>number</strong> (also supported in the normal 'type' attribute)</li>
+        <li><strong>creditCardNumber</strong> (expects a 'type' of text)</li>
+        <li><strong>monthAndYear</strong> (expects 2 inputs with 'type' of text)</li>
+    </ul>
+    <p>These types are described in more detail later on.</p>
+   <p>A standard HTML type attribute should present in addition to allow the browser to correctly handle input entry for the input. (if in any doubt just use type="text").</p>
+   <p>The type attribute defines the behaviour of the input, and adds certain default validators to check that the input value conforms to the type of value expected (e.g. number should be a numeric value).</p>
+   <p>The supported types are those listed above.</p>
+   <div class="example">
+    <form class="loom-form" id="type-example-form">
+        <div class="input-field">
+            <label for="text">Text Field</label>
+            <input type="text" name="text"/>
+        </div>
+        <div class="input-field">
+            <label for="number">Numeric Field</label>
+            <input type="number" name="number"/>
+        </div>
+        <div class="input-field">
+            <label for="date">Date Field</label>
+            <input type="date" name="text"/>
+        </div>
+        <div class="input-field">
+            <label for="creditcard">Credit Card Number Field</label>
+            <input data-loom-type="creditCardNumber" type="text" name="creditCardNumber"/>
+        </div>
+    </form>
+   </div>
+   <h3>data-loom-no-post</h3>
+   <p>This attribute causes an input to not be posted up with the form</p><p>Validation still fires as normal, and an invalid value in the no-post field will still prevent the form from posting up.</p>
+   <p>Can be useful for confirmation fields (see data-loom-confirm later), or for fields where the value will be extracted with javascript and used elsewhere, but the validation functionality of loom is still useful.</p>
+    <div class="example">
+    <form class="loom-form" id="type-example-form">
+        <div class="input-field">
+            <label for="text1">Text Field 1</label>
+            <input type="text" name="text1" value="This value will be posted" />
+        </div>
+        <div class="input-field">
+            <label for="text2">Text Field 2</label>
+            <input type="text" name="text2" value="This value won't be posted" data-loom-no-post="true"/>
+        </div>
+        <button type="submit">try me</button>
+    </form>
+   </div>
+   <h3>data-loom-validators</h3>
+   <p>A pipe (|) separated list of validator function names, the functions should exist in validators.js in the loom folder, and custom validators should be added to this file copying the style of the existing functions</p>
+   <p>Loom uses this attribute value to build a list of validator functions to run when the input is changed. If any of the validators fail (return false) then the input is marked as 'invalid' and the form will not submit.</p>
+   <p>An example would be data-loom-validators="alphanumeric|lowercase"</p>
+   <p>On non-required fields, validators should be coded carefully so that a blank value for the input does not cause the validation to fail.</p>
+   <p>Further information on validators is specified in the 'validation messages' section below.</p>
+   <h3>required</h3>
+   <p>The HTML5 standard to indicate that a field is required. Any value for this attribute causes loom to add a 'required' validator. Causing validation to fail on an empty value.</p>
+   <div class="example">
+    <form class="loom-form" id="type-example-form" novalidate>
+        
+        <div class="input-field">
+            <label for="text2">This field isn't required</label>
+            <input type="text" name="text2" />
+        </div>
+        <div class="input-field">
+            <label for="text1">This field is required</label>
+            <input type="text" name="text1" required="required" />
+        </div>
+        <button type="submit">Leave them empty and click me</button>
+    </form>
+   </div>
+   <h3>data-loom-required-when</h3>
+   <p>Allows you to specify that a field is required based upon the value of another input. A trivial example is a "Pet's name" input and a checkbox "Do you own a pet?". We may wish for the pet name to be required, but only when the 'Do you own a pet' checkbox value is set.</p>
+   <p><b>The value of this attribute can take two forms:</b></p>
+   <p><b>Just the dependency field name.</b> e.g in our example case data-loom-required-when="has-dog". Any 'truthy' (non-empty non-zero) value for the specified field will cause the field with the attribute to be 'required'.</p>
+   <p><b>fieldName=value</b> e.g. for a card start date... data-loom-required-when="cardType=mastercard". In this case loom detects the = sign and tests the dependency field value against the value to the right of the '='. If these values are equal then the field with the attribute is treated as 'required'
+   </p>
+    <div class="example">
+    <form class="loom-form" id="type-example-form" novalidate>
+        <div class="input-field">
+            <label for="text1">If this field value is hello, then the other field is required</label>
+            <input type="text" name="text1" value="hello" />
+        </div>
+        <div class="input-field">
+            <label for="text2">This field is required when the other field's value is hello</label>
+            <input type="text" name="text2"  data-loom-required-when="text1=hello" />
+        </div>
+         <div class="input-field">
+            <label for="text1">If this field is ticked, then the other field is required</label>
+            <input type="checkbox" name="check1"  />
+        </div>
+        <div class="input-field">
+            <label for="text3">This field is required when the box is ticked</label>
+            <input type="text" name="text3"  data-loom-required-when="check1" />
+        </div>
+        <button type="submit">Try it</button>
+    </form>
+   </div>
+   <p class="note">FUTURE VERSIONS: 
+    The required-when syntax should be extended to include inequalities (lt, gt) and lists of allowed values. Also support for !=.
+   </p>
+   <h3>data-loom-required-when-disabled-otherwise</h3>
+   <p>This attribute causes behaviour as above, but in addition, the field is disabled and ignored (i.e. won't be posted) when it is not required.</p>
+   <div class="example">
+    <form class="loom-form" id="type-example-form" novalidate>
+        <div class="input-field">
+            <label for="text1">If this field value is hello, then the other field is required</label>
+            <input type="text" name="text1" value="hello" />
+        </div>
+        <div class="input-field">
+            <label for="text2">This field is required when the other fields value is hello</label>
+            <input type="text" name="text2"  data-loom-required-when-disabled-otherwise="text1=hello" />
+        </div>
+         <div class="input-field">
+            <label for="text1">If this field is ticked, then the other field is required</label>
+            <input type="checkbox" name="check1"  />
+        </div>
+        <div class="input-field">
+            <label for="text3">This field is required when the box is ticked</label>
+            <input type="text" name="text3"  data-loom-required-when-disabled-otherwise="check1" />
+        </div>
+        <button type="submit">Try it</button>
+    </form>
+   </div>
+   <h3>data-loom-confirm</h3>
+   <p>Allows you to specify that a form field is being used to allow the user to confirm the value entered in another field (e.g. a password or an email address).</p>
+   <p>The attribute value should be the name of the field being 'confirmed'. e.g. data-loom-confirm='password'</p>
+   <p>An input field with this attribute should have the same type as the field it is confirming, and any validators present must also be present on the field being confirmed.</p>
+   <p>Loom adds a validator to the form field checking that it's value is equal to that of the field named in the attribute.</p>
+   <div class="example">
+   <form class="loom-form">
+   <div class="input-field">
+		<label for="email">Email</label>
+        <input name="email"  type="email" required="required"  placeholder="Your email"  />
+	</div>
+	<div class="input-field">
+		<label for="confirm-email">Confirm Email</label>
+        <input name="confirm-email"  type="email" required="required" placeholder="Confirm email" data-loom-confirm="email" />
+	</div>
+    </form>
+    </div>
+   <h3>data-loom-add-controls</h3>
+   <p>A flag specifying that you would like loom to use javascript to generate (and wire-up) controls for the input.</p>
+   <p>The actual functionality for the controls is implemented on a per-input-type basis, and only certain input types allow controls to be generated.</p>
+   <p>Any value for the attribute will cause the controls to be generated</p>
+   <p>Additionally, a '.has-controls' class is added to the surrounding input-field to allow targeted CSS styles.</p>
+   <p>At the moment the controls supported are:</p>
+   <p>On a <b>number</b> type input, increment and decrement buttons are added, when clicked they increment or decrement the value of the input by one.</p>
+   <p>On a <b>date</b> type input, a jqueryUI datepicker is generated.</p>
+   <div class="example">
+    <form class="loom-form" id="type-example-form" novalidate>
+        <div class="input-field">
+            <label for="text1">This is a numeric field with no controls added</label>
+            <input type="number" name="text1" value="hello" />
+        </div>
+        <div class="input-field">
+            <label for="text2">This is a numeric field with controls added</label>
+            <input type="number" name="text2"  data-loom-add-controls="true" />
+        </div>
+         <div class="input-field">
+            <label for="date">This is a date field with no controls added</label>
+            <input type="date" name="date"  />
+        </div>
+        <div class="input-field">
+            <label for="text3">This is a date field with controls added</label>
+            <input type="date" name="text3"  data-loom-add-controls="true" />
+        </div>
+        <button type="submit">Try it</button>
+    </form>
+   </div>
+   <p class="note">
+    NFUTURE VERSIONS: in future, several control implementations can be made and selected / added via the value of this attribute. e.g. data-loom-controls="inc-dec-buttons" or data-loom-controls="inc-dec-buttons|zero-button".
+   </p>
+   <h3>data-loom-populate-on-select / data-loom-populate-field</h3>
+   <p><b>SELECTs only</b></p>
+   <p>This attribute specifies that when the select value is changed, it should populate a series of other inputs based on data attributes on the option that was selected. This is typically used for address selections, where the user selects an address via its name from a select dropdown, and then the specific inputs underneath (Address Line 1: City: Zipcode: ) are populated with the values for that address</p>
+   <p>Any value for this attribute causes the behaviour described.</p>
+   <p>In addition to data-loom-populate-on-select on the select, the option elements also need data-loom-populate-field-%fieldname% attributes</p>
+   <p>There will be serveral of these attributes on each option.. one for each of the fields being 'copied to' or populated when that option is selected.</p>
+   <p>The final part of the attribute name after 'data-loom-populate-field-" should be the name of the input to populate.</p>
+   <p>The value for each attribute should be the value that the input should take. e.g. an option might have the attributes..</p>
+   <p><code>data-loom-populate-field-city="Bury" data-loom-populate-field-postcode="BL1 1HG"</code></p>
+<div class="example">
+<form class="loom-form" novalidate="novalidate">
+    <div class="input-field">
+     <label for="billing-account-key">Select</label>
+         <select data-loom-populate-on-select="true"  name="billing-account-key" >
+         <option data-loom-populate-field-billing-city="" data-loom-populate-field-billing-name_2="" data-loom-populate-field-billing-postcode="" data-loom-populate-field-billing-state="" data-loom-populate-field-billing-street_1="" data-loom-populate-field-billing-street_2="" data-loom-populate-field-billing-name="" value="">[Select Address]</option>
+          <option data-loom-populate-field-billing-city="Bury" data-loom-populate-field-billing-name_2="Westmoor Building" data-loom-populate-field-billing-postcode="BL1 1GH" data-loom-populate-field-billing-state="Lancs" data-loom-populate-field-billing-street_1="12 Spooner Street" data-loom-populate-field-billing-street_2="Brandlesholme" data-loom-populate-field-billing-name="John Smith" value="someID">12 Spooner Street</option>
+           <option data-loom-populate-field-billing-city="London" data-loom-populate-field-billing-name_2="Museum Building" data-loom-populate-field-billing-postcode="GW1 1RR" data-loom-populate-field-billing-state="London" data-loom-populate-field-billing-street_1="1A Key Street" data-loom-populate-field-billing-street_2="Greenwhich" data-loom-populate-field-billing-name="Jill Smith" value="">1A Key Street</option>
+         </select>
+     </div>
+     <div class="input-field">
+     <label for="billing-name">Name</label>
+     <input data-loom-no-post="true"  name="billing-name" type="text" />
+     </div>
+     <div class="input-field">
+     <label for="billing-name_2">Name 2</label>
+     <input data-loom-no-post="true"  name="billing-name_2" type="text" />
+     </div>
+     <div class="input-field">
+     <label for="billing-street_1">Street 1</label>
+     <input data-loom-no-post="true"  name="billing-street_1" required="required" type="text" />
+     </div>
+     <div class="input-field">
+     <label for="billing-street_2">Street 2</label>
+     <input data-loom-no-post="true"  name="billing-street_2" type="text" />
+     </div>
+     <div class="input-field">
+     <label for="billing-city">City</label>
+     <input data-loom-no-post="true"  name="billing-city" required="required" type="text" />
+     </div>
+     <div class="input-field">
+     <label for="billing-state">State</label>
+     <input data-loom-no-post="true"  name="billing-state" type="text" />
+     </div>
+     <div class="input-field">
+     <label for="billing-postcode">ZIP</label>
+     <input data-loom-no-post="true" name="billing-postcode" required="required" type="text" />
+     </div>
+
+ </form>
+  </div>
+   <h3>data-loom-copy-on-check / data-loom-copy-on-check-from-prefix / data-loom-copy-on-check-to-prefix</h3>
+   <p><b>CHECKBOX only</b><p>
+   <p>Allows you to specify that a checkbox checking triggers copying of values from one set of input fields to another. The main use for this functionality is with 'Billing address is the same as delivery address' type functionality</p>
+   <p>All the fields that are being copied from / to must share the same prefix, as this is how loom identifies them</p>
+   <p><b>data-loom-copy-on-check-from-prefix</b> specifies a prefix for the input fields that should be copied from</p>
+   <p><b>data-loom-copy-on-check-to-prefix</b> specifies a prefix for the input fields that should be copied to</p>
+   <p>Loom will search for fields with names starting with the copy-from-prefix in the same form as the checkbox. The value of these will be copied to fields with matching names, but starting with the copy-to-prefix.</p>
+   <p>I.e. in this demo, fields starting with <b>billing-*</b> are copied to fields starting with <b>deliv-*</b></p>
+   <div class="example">
+<form class="loom-form" novalidate="novalidate">
+     <div class="input-field">
+     <label for="billing-name">Name</label>
+     <input data-loom-no-post="true"  name="billing-name" type="text" value="Tom" />
+     </div>
+     <div class="input-field">
+     <label for="billing-name_2">Name 2</label>
+     <input data-loom-no-post="true"  name="billing-name_2" type="text" value="Junior Developer"/>
+     </div>
+     <div class="input-field">
+     <label for="billing-street_1">Street 1</label>
+     <input data-loom-no-post="true"  name="billing-street_1" required="required" type="text" value="123 Madeup Street"/>
+     </div>
+     <div class="input-field">
+     <label for="billing-street_2">Street 2</label>
+     <input data-loom-no-post="true"  name="billing-street_2" type="text" value="Madeup Place"/>
+     </div>
+     <div class="input-field">
+     <label for="billing-city">City</label>
+     <input data-loom-no-post="true"  name="billing-city" required="required" type="text" value="Bury" />
+     </div>
+     <div class="input-field">
+     <label for="billing-state">State</label>
+     <input data-loom-no-post="true"  name="billing-state" type="text" value="Lancs"/>
+     </div>
+     <div class="input-field">
+     <label for="billing-postcode">ZIP</label>
+     <input data-loom-no-post="true" name="billing-postcode" required="required" type="text"  value="BL1 1GH"/>
+     </div>
+     <div class="input-field">
+     <label for="same">Are addresses the same? (tick box to copy values)</label>
+     <input data-loom-copy-on-check="true" data-loom-copy-on-check-from-prefix="billing" data-loom-copy-on-check-to-prefix="deliv" data-loom-no-post="true" name="same" type="checkbox">
+     </div>
+<br/></br>
+    <div class="input-field">
+     <label for="deliv-name">Name</label>
+     <input data-loom-no-post="true"  name="deliv-name" type="text" />
+     </div>
+     <div class="input-field">
+     <label for="deliv-name_2">Name 2</label>
+     <input data-loom-no-post="true"  name="deliv-name_2" type="text" />
+     </div>
+     <div class="input-field">
+     <label for="deliv-street_1">Street 1</label>
+     <input data-loom-no-post="true"  name="deliv-street_1" required="required" type="text" />
+     </div>
+     <div class="input-field">
+     <label for="deliv-street_2">Street 2</label>
+     <input data-loom-no-post="true"  name="deliv-street_2" type="text" />
+     </div>
+     <div class="input-field">
+     <label for="deliv-city">City</label>
+     <input data-loom-no-post="true"  name="deliv-city" required="required" type="text" />
+     </div>
+     <div class="input-field">
+     <label for="deliv-state">State</label>
+     <input data-loom-no-post="true"  name="deliv-state" type="text" />
+     </div>
+     <div class="input-field">
+     <label for="deliv-postcode">ZIP</label>
+     <input data-loom-no-post="true" name="deliv-postcode" required="required" type="text" />
+     </div>
+
+
+ </form>
+  </div>
+   <h3>data-loom-post-separately</h3>
+   <p><b>Multi input fields only (currently only monthAndYear)</b></p>
+   <p>By default a multi input field has it's values combined together and submitted as a single value. e.g. monthAndYear has separate month and year inputs, but they are submitted as a single form field with a value like 2014-03</p>
+   <p>Any value for this attribute changes this behaviour, and causes the inputs to instead be submitted individually. In this way the inputs can be validated as a whole (useful for things like month-and-year expiry dates), but submitted individually.</p>
+   <div class="example">
+   <form class="loom-form">
+ <div class="input-field two-per-line">
+ <label for="card-start-month">Valid From (posted as normal)</label>
+ <select  data-loom-type="monthAndYear" name="card-start-month" placeholder="">
+ <option value="01">01</option>
+ <option value="02">02</option>
+ <option value="03">03</option>
+ <option value="04">04</option>
+ <option value="05">05</option>
+ <option value="06">06</option>
+ <option value="07">07</option>
+ <option value="08">08</option>
+ <option value="09">09</option>
+ <option value="10">10</option>
+ <option value="11">11</option>
+ <option value="12">12</option>
+ </select>
+ <select name="card-start-year">
+ <option value="2011">2011</option>
+ <option value="2012">2012</option>
+ <option value="2013">2013</option>
+ <option value="2014">2014</option>
+ </select>
+ </div>
+ <div class="input-field two-per-line">
+ <label for="card-end-month">Valid Until (posted separately)</label>
+ <select data-loom-post-separately="true" data-loom-type="monthAndYear" name="card-end-month" placeholder="">
+ <option value="01">01</option>
+ <option value="02">02</option>
+ <option value="03">03</option>
+ <option value="04">04</option>
+ <option value="05">05</option>
+ <option value="06">06</option>
+ <option value="07">07</option>
+ <option value="08">08</option>
+ <option value="09">09</option>
+ <option value="10">10</option>
+ <option value="11">11</option>
+ <option value="12">12</option>
+ </select>
+ <select name="card-end-year">
+ <option value="2011">2011</option>
+ <option value="2012">2012</option>
+ <option value="2013">2013</option>
+ <option value="2014">2014</option>
+ </select>
+ </div>
+ <button type="submit">Try it (use network tab to view results)</button>
+ </form>
+ </div>
+  
+</section>
+<section>
+    <h2>Input States</h2>
+    <p>Loom specifies the state of an input by adding classes to the .input-field div</p>
+    <p>The input states are:</p>
+    <ul>
+        <li><b>Success (.success)</b>: The input was validated and passed all validation checks, if the input has no validators, then any interaction with it that causes validation to fire will change it's state to 'success'.</li>
+        <li><b>Error (.error)</b>: The input was validated and failed one or more validation checks.</li>
+        <li><b>Disabled (.disabled)</b>: The input was disabled programmatically by loom.</li>
+        
+        <li><b>Validator specific error states .error-* </b>: When a validator fails, the state of the input is changed to reflect this with an 'error-*' class as described below.</li>
+        
+    </ul>
+    <h4>error-* states:</h4>
+    </p>
+    When a validator fails, loom adds an error class to the input-field, and also adds an error-* class specific to the validator that failed. e.g. if a 'creditCardNumber' validator failed, loom would add classes ".error" and ".error-creditCardNumber". This allows CSS to be used to hide and display error messages on a per-validator basis. Note loom only adds the error-* class for the first validator that fails.
+    </p>
+</section>
+<section>
+    <h2>Input Messages</h2>
+    <p>Input messages should be a child of the ".input-field" div.</p>
+    <p>The should usually be wrapped in a div with class ".messages"</p>
+    <p>Within the messages div, p elements with classes corresponding to the input states (above) should be added.. looms CSS rules cause the message to show when the form is in the appropriate state.</p>
+    <p>In addition, a message with class ".hint" is shown when the form is not in any of the other states (i.e. before it is edited)
+    <div class="example">
+        <form class="loom-form">
+            <div class="input-field">
+                <label for="text1">Type in the box and the validation message will change.</label>
+                <input required="required" type="text" name="text1" maxlength="5" minlength="3" />
+                <div class="messages">
+                    <p class="hint">Type something (.hint)</p>
+                    <p class="success">Input is valid. (.success)</p>
+                    <p class="error error-required">Input is required! (.error-required)</p>
+                    <p class="error error-maxlength">Input is too long! (.error-maxlength)</p>
+                    <p class="error error-minlength">Input is too short! (.error-minlength)</p>
+                    <p class="disabled">Input is disabled</p>
+                </div>
+            </div>
+        </form>
+    </div>
+    <h4>A note on custom validators</h4>
+    <p>The show/hide behaviour of the messages is based on CSS rules acting on the classes that loom adds when a validator fails (error-%validator-name%).</p>
+    <p>When writing and adding custom validators, it is necessary to add a corresponding line at the end of the loom.less file (copy the existing style) to cause an error message with appropriate class to show when the .input-field is given the appropriate error-* class by loom.</p>
+</section>
+<section>
+<h2>FAQs</h2>
+<h3>I've created a form as described but none of the loom functionality is working.</h3>
+<p>Check that the form has a class of '.loom-form'.</p>
+<p>Check that the loom javascript file has been required correctly</p>
+<p>Check that on page load somewhere in the JS you are creating a loom instance: "new loom();" as this is where loom binds up to the forms.
+<h3>An input that I added is not being posted up</h3>
+<p>Check that the input is wrapped in an .input-field div, otherwise it will be ignored by loom</p>
+<p>Check that there isn't a "data-loom-no-post" attribute on the input</p>
+<h3>I want to add my own validator to loom, what are the steps?</h3>
+<p>The validators.js file is where all the loom validators live.</p>
+<p>Your validator should be added in there, following the style of the existing validators (essentially just a self contained function that takes a single input, and returns either true or false).</p>
+<p>The name of the validator should be descriptive.</p>
+<p>Next add a data-loom-validators="nameOfMyNewValidator" attribute to the input field that you wish to use the validator.</p>
+<p>If you want an error message to be displayed when the validator fails, add a p with class="error-nameOfMyNewValidator"</p>
+<p>Finally add a line at the end of loom.less, a css rules that causes the error-nameOfMyNewValidator to be display:inherit when the .nameOfMyNewValidator class is present on the input-field (copy the style of the existing rules for this).</p>
+<h3>I want to add a new data type to loom Forms.</h3>
+<p>Data types all live in the formField file.</p>
+<p>All form field types inherit from formField. Towards the bottom of the file are the inheriting types which override various prototype functions to get the desired behaviour.</p>
+<p>Your new class should have a constructor (which should call the parent FormField constructor in addition to anything else you do)</p>
+<p>The new class should then call the helper inherit() method (see other classes in the source file for details of this).
+<p>You should add prototype functions for any behaviours that you wish to be different from the default</p>
+<p>Common candidates for being overridden are <b>setValueFromBoundInput</b>, which takes the input value and maps it to an internal value, and <b>getFormDataString</b> which serializes the object ready for a form post.</p>
+<p>Finally, the module utilises a factory to generate formFields at the end of the file. there is getType function in here which maps type names as specified by data-loom-type attributes to constructors. You will need to add an entry for your new type</p>
+</section>
+<section>
+<h2>Javascript API</h2>
+<p>Loom incorporates a javascript API to allow binding of custom behaviours to forms.</p>
+<p>To access the API from your code, you need a loom instance. As mentioned earlier this is created by:</p>
+<p><code>
+require("path/to/loom" function(Loom) { <br/>
+     var myLoomAPIInstance = new Loom();<br/>
+  });
+</code></p>
+<p>Loom is a singleton so you can require it whenever you need API access.</p>
+<p><b>In addition to any API useage, a loom instance should be created at page load (usually within main.js) to allow it to bind to the loom-forms on the page.</b></p>
+</section>
+<section>
+<h2>A note on server responses</h2>
+<div class="note">Server response standardisation is planned for the next version.</div>
+<p>As loom expands in functionality, server responses will be more standardized to make it easier for the server response to dictate the behaviour of the client in a predictable way.</p>
+<p>This functionality is planned for the next version of loom.</p>
+<p>The server responses (both XML and JSON) will follow a standard format as follows</p>
+a response node at the root level.
+a data node containing the actual data of the response.
+an HTML node containing any valid HTML required in the response.
+a meta node, containing information about the response and directives for the client.
+The meta node contains information like the following:
+a message node: this contains a text / HTML message associated with the response, this could be a success message, an error message or something else. If this node is present and non empty, loom should show the message as an alert to the user. The 'type' of the message will be dictated by whether the response was a success or error.
+a success node : present with a 'truthy' value if the response is a success
+an error node : presnet with a 'truthy' value if the response signifies an error
+a field_specific_errors node: contains child "field_specific_error" nodes which allows the server to communicate per field errors to the client. The details of this node are outlined in more detail below.
+a html_meta_entries node: This contains directives for the HTML in the HTML node and is described in more detail below.
+a redirect_url node: This contains the URL to redirect the client to. If present the client will redirect to this URL.
+<h4>An example server response</h4>
+<h4>JSON</h4>
+<code><pre>
+{ 
+    "response" : {
+        "error" : "X", // "success" if the post had been successful.
+        "data" : {
+            myObject : {}, myOtherObject : {} //the usual json return data
+        },
+        "html" : "&lt;div id='test'&gt;Some HTML as a string&lt;/div&gt;
+            &lt;div id='other-test'&gt;some more HTML&lt;/div&gt;",
+        "meta" : { 
+            "message" : { // A message associated with the response
+                "content" : "There was an error creating your user account",
+                "type" : "persistent" // persistent | transient
+                "class" : "info big" //additional classes to add.
+            }
+            "redirect_url" : "", //if populated would cause a redirect to that url.
+            "html_meta_entries" : [ //these are directives for DOM manipulation
+                {
+                    "source_selector" : "#test", //for the HTML in this response
+                    "target_selector" : ".basket", //for the DOM
+                    "method" : "append" // append | prepend | replace
+                },
+                {
+                    "source_selector" : "#other-test",
+                    "target_selector" : ".notification-area",
+                    "method" : "replace"
+                }
+            ],
+            "field_errors" : [ // server side form validation errors.
+                { 
+                    "field" :   "email",
+                    "message" : "this email address is already in use."
+                },
+                {
+                    "field" :   "account number",
+                    "message" : "your account number appears to be invalid."
+                }
+            ],
+            "cache" : "" // in the future we can add some cache control.
+        }
+    } 
+}
+</pre>
+</code>
+<h4>Outline for loom handling the response</h4>
+<p>The outline for loom handling the response would be as follows.</p>
+<p>First use the meta error vs success node to determine if the post was a success or error.</p>
+<p>Next grab the HTML and load into a jquery object</p>
+<p>For each HTML meta entry, grab the HTML specified by the source selector, and load into the target selector using the method specified.</p>
+<p>For each field error entry. Add class 'server-error' to that input field. add a .server-error message and populate it with the value of message (causing it to be displayed next to the input field).</p>
+<p>Grab the message text, and load into a message to be displayed, adding the classes specified</p>
+<p>Once all this is done, call any onSuccess or onError callbacks.</p>
+<p>Finally, if a redirect URL was present, redirect to that URL.</p>
+<p></p>
+</section>
+<section>
+<h2>Loom API Methods v0.1</h2>
+<h3>addOnSuccessCallback(formidOrjQueryElement, myCallback)</h3>
+<p>Adds a callback to the specified form, to be called after the form is successfully posted.</p>
+<p>The callback should expect a single argument, the response from the server.</p>
+<h3>addOnErrorCallback(formidOrjQueryElement, myCallback)</h3>
+<p>Adds a callback to the specified form, to be called after the form is posted and there is an error.</p>
+<p>This includes both hard and soft errors (outlined separately below).</p>
+<p>The callback should expect a single argument, the response from the server, or a meta error object in the event of no server response being received.
+<h3>addOnInvalidCallback(formidOrjQueryElement, myCallback) IN NEXT VERSION</h3>
+<p>Adds a callback to the specified form, to be called when the form fails validation (usually when the user clicks submit, but this can also be triggered programatically by calling loom.validate())</p>
+
+<h3>addOnHardErrorCallback(formidOrjQueryElement, myCallback) IN NEXT VERSION </h3>
+<p>"Hard error" covers the following:</p>
+<ul>
+<li>401, 404, 500 or some other server error that results in no response being received.</li>
+<li>An error parsing the server response (i.e. invalid JSON or XML returned from the server).</li>
+<li>The request timing out.</li>
+</ul>
+<p>This function adds a callback to the specified form, to be called in the event of a hardError occuring.</p>
+<p>The function should expect a single argument, a javascript object with some details about the error (mainly for debugging purposes.. it is unlikely that this error would be communicated to the user</p>
+<p>The error response consists of</p>
+<ul>
+<li><b>error</b>: set to "hard_error"</li>
+<li><b>code</b>: 401, 404 etc. if applicable, blank otherwise</li>
+<li><b>type</b>: serverError | invalidResponseData | timeout</li>
+<li><b>debug-message</b>: A human readable debug message to aid debugging e.g. 'Server responded with a 404 - check the form action URL exists'</li>
+</ul>
+<h3>addOnSoftErrorCallback(formidOrjQueryElement, myCallback) IN NEXT VERSION</h3>
+<p>"Soft error" covers a form post where the server responds, but the response communicates an error:</p>
+<p>Soft errors are detected in loom by examining the server response and looking for:</p>
+<ul>
+<li>In JSON responses: an "error" key at the root level of the object</li>
+<li>In XML responses: an <error> node at the root level of the tree.</li>
+</ul>
+<h3>rebind(arrayOfjQueryElementsOrIDs)</h3>
+<p>Accepts the result of a jQuery selector as its only argument</p>
+<p>Re-binds the form to loom, this is basically to be used if the form is loaded by javascript (say, over AJAX) so 'missed' the loom binding on page load.</p>
+<h3>reset(formidOrjQueryElement)</h3>
+<p>Resets the form to a blank state. Inputs are blanked and all validation, error and success states are cancelled.</p>
+<h3>validate(formidOrjQueryElement)</h3>
+<p>Forces the forms internal validation functions to fire, resulting in success / error messages being displayed for input fields.</p>
+<h3>trySubmitForm(formidOrjQueryElement) ##rename to trySubmit()</h3>
+<p>Attempts to submit the form asif the user had clicked the submit button:</p>
+<ul>
+<li>First, validates the form</li>
+<li>If validation fails then the form is not submitted</li>
+<li>If validation passes then the form is submitted as normal.</li>
+</ul>
+<p>
+<h3>forceSubmit(formidOrjQueryElement) IN NEXT VERSION</h3>
+<p>Forces the form to be submitted in it's current state, bypassing any form validation.</p>
+<h3>disable(formidOrjQueryElement)</h3>
+<p>Disables the form and all it's inputs.</p>
+<h3>enable(formidOrjQueryElement)</h3>
+<p>enables the form and all it's inputs.
+<hr/>
+<h3>chainEnableForwards</h3>
+<h3>chainEnableBackwards</h3>
+<h3>chainEnableAll</h3>
+<h3>chainDisableForwards</h3>
+<h3>chainDisableBackwards</h3>
+<h3>chainDisableAll</h3>
+</section>
+<section>
+    <h2>TODO: Worked example... the 5 minute checkout page.</h2>
+    <p>Below is an illustrative example of building a form using the loom library.</p>
+    <p>Both server side and client side code is covered</p>
+    <h3>Stage 1: Set up loom</h3>
+    <p>Starting from a blank checkout page, we first need to add the code for loom</p>
+    <p>First, we drop in the loom JS files.</p>
+    <p>Next we drop in the loom CSS files.</p>
+    <p>We then import the css from the main .less file of the project.</p>
+    <p>We then 'require' loom in main.js as soon as any page on the site loads.</p>
+    <h3>Stage 2: Add the form HTML</h3>
+    <p>We go through the form step by step and build up the HTML</p>
+    <br/><br/>
+    <h3>Stage 3: Bind up event handlers</h3>
+    <p>Back in main,.js, we do the usual trick to only execute code on the checkout page, in this case we use jQuery selector to check for the
+    presence of a '#checkout' element on the page, and if present we execture the code.</p>
+    <p>We bind up four different event handlers, largely just to illustrate their use.</p>
+    <p>We add loom.addOnSuccessCallback(checkoutSuccess);</p> etc.etc.
+    <h3>Stage 4: Set up the server response.</h3>
+    <p>On the server, we set up a response in the format that loom expects.</p>
+    <p>This is a JSON object, with "response" : as the only property.</p>
+    <p></p>
+    <p></p>
+</section>
+
+
+
+<form class="loom-form" data-loom-model="customerDetails" data-loom-action="somesubaction" data-loom-data-type="json" action="/controller-url" novalidate >
+<h1>loom.js<small>weavability library for forms</small></h1>
+	<fieldset>
+    <legend>This first section concerns your personal details.</legend>
+	<div class="input-field">
+		<label><span>Firstname</span>
+			<input name="cust-firstName" data-loom-name="FIRST_NAME" type="text" required="required" data-loom-validators="name|required" data-loom-field-prefix="cust-" placeholder="" maxlength="10"/>
+		</label>
+		<p class="error error-name">Just letters, spaces and apostrophe's please.</p>
+		<p class="error error-required">We need to know your name before you can continue.</p>
+		<p class="error error-maxlength">The length of your name needs to be less than 10 characters please.</p>
+        <p class="hint">Firstname or just an initial is fine.</p>
+		<p class="success">Looks good.</p>
+	</div>
+	<div class="input-field">
+		<label><span>Surname</span>
+			<input name="cust-surname" type="text" required="required" data-loom-validators="name" data-loom-field-prefix="cust-" placeholder=""  />
+		</label>
+		<p class="error error-name">Just letters, spaces and apostrophe's please.</p>
+		<p class="error error-required">We need to know your surname before you can continue</p>
+		<p class="success">That's fine.</p>
+        <p class="hint">Your name as it appears on any correspondence.</p>
+	</div>
+	<div class="input-field">
+		<label><span>Email</span>
+			<input name="cust-email"  type="email" required="required" data-loom-field-prefix="cust-" placeholder="example@domain.com"  />
+		</label>
+		<p class="error error-email">hmmm that doesn't look like a valid email address at the moment.</p>
+		<p class="error error-required">We need to know your email before you can continue</p>
+		<p class="success">Awesome.</p>
+        <p class="hint">This is where your order confirmation will be sent.</p>
+	</div>
+	<div class="input-field">
+		<label><span>Confirm email</span>
+			<input name="cust-email-confirm"  type="email" required="required"  placeholder="example@domain.com" data-loom-confirm="cust-email" />
+		</label>
+		<p class="error error-email">hmmm that doesn't look like a valid email address at the moment.</p>
+		<p class="error error-required">We need you to confirm your email before you can continue</p>
+		<p class="error error-confirm">Just check that those emails match</p>
+		<p class="success">Looks good.</p>
+	</div>
+	<div class="input-field">
+		<label><span>D.O.B (with picker)</span>
+			<input name="dateOfBirth"  type="date" required="required"  placeholder="dd/mm/yy" max="2015-01-01" min="1988-02-16" data-loom-add-controls="true" />
+		</label>
+		<p class="error error-date">hmmmm we need a date in the dd/mm/yyyy format please</p>
+		<p class="error error-required">We need a date of birth for your record please.</p>
+        <p class="error error-max">Date needs to be prior to 2015 please.</p>
+		<p class="error error-min">Date needs to be later than Feb '88 please.</p>
+		<p class="success">Looks good.</p>
+        <p class="hint">Between 1988 and 2015 please.</p>
+	</div>
+    <div class="input-field">
+		<label><span>D.O.B (text entry)</span>
+			<input name="dateOfBirth2"  type="date" required="required"  placeholder="dd/mm/yy" max="2015-01-01" min="1988-02-16"  />
+		</label>
+		<p class="error error-date">hmmmm we need a date in the dd/mm/yyyy format please</p>
+		<p class="error error-required">We need a date of birth for your record please.</p>
+        <p class="error error-max">Date needs to be prior to 2015 please.</p>
+		<p class="error error-min">Date needs to be later than Feb '88 please.</p>
+		<p class="success">Looks good.</p>
+	</div>
+    <div class="input-field">
+		<label><span>Telephone</span>
+			<input name="telephone"  type="tel" required="required"  placeholder="e.g. 0161 533 533"  />
+		</label>
+		<p class="error error-tel">telephone number should be 11-16 numbers please</p>
+		<p class="error error-required">We meed you to enter a contact number please.</p>
+		<p class="success">Looks good.</p>
+        <p class="hint">We will call you on this number when your order arrives.</p>
+	</div>
+    <div class="input-field">
+		<label><span>Post Code</span>
+			<input name="postCode"  type="text" required="required"  placeholder="e.g. BL1 1GG" data-loom-validators="UKPostCode"  />
+		</label>
+		<p class="error error-UKPostCode">That doesn't look like a valid UK Postcode.</p>
+		<p class="error error-required">We meed your postcode to be able to send out your order.</p>
+		<p class="success">Looks good.</p>
+        <p class="hint">The postcode for your delivery address.</p>
+	</div>
+	<div class="input-field">
+		<label><span>Password</span>
+			<input name="pass"  type="password" required="required"  data-loom-validators="passwordPolicyStrict" placeholder=""  />
+		</label>
+		<p class="error error-passwordPolicyStrict">at least 8 characters, at least one number, and one capital letter please</p>
+		<p class="error error-required">We meed you to choose a password please.</p>
+		<p class="success">Looks good.</p>
+        <p class="hint">at least 8 characters, at least one number, and one capital letter.</p>
+	</div>
+    <div class="input-field">
+          <label>
+            <span>Quantity</span>
+            <input data-loom-add-controls="true" max="9" min="1" name="quantity" type="number" value="1"/>
+          </label>
+          <p class="error error-number ">Quantity needs to be a number please.</p>
+          <p class="error error-max">Max quantity is 9.</p>
+          <p class="error error-min">Minimum quantity is 1.</p>
+          <p class="success">Sorted.</p>
+        </div>
+    
+	</fieldset>
+	
+	<fieldset>
+    <legend>This section is about your payment details.</legend>
+	<div class="input-field">
+		<label><span>Credit Card Number</span>
+			<input name="credit"  type="text" required="required"   data-loom-type="creditCardNumber" placeholder="e.g. 1111222233334444"  />
+		</label>
+		<p class="error error-creditCardNumber">Just check you entered your credit card number correctly (should be 16 numbers)</p>
+		<p class="error error-required">We need your credit card number to proceed please.</p>
+		<p class="success">Looks good.</p>
+        <p class="hint">The 16 digit number on the front of your card.</p>
+	</div>
+    <div class="input-field two-per-line">
+		<label><span>Start Date</span>
+			<select name="cardValidFrom-month"  required="required"  placeholder=""  data-loom-type="monthAndYear" >
+            <option value="01">01</option>
+            <option value="02">02</option>
+            <option value="03">03</option>
+            <option value="04">04</option>
+            <option value="05">05</option>
+            <option value="06">06</option>
+            <option value="07">07</option>
+            <option value="08">08</option>
+            <option value="09">09</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+            
+            </select>
+            <select name="cardValidFrom-year" >
+            <option value="2011">2011</option>
+            <option value="2012">2012</option>
+            <option value="2013">2013</option>
+            <option value="2014">2014</option>
+            </select>
+		</label>
+        <p class="error error-required">We meed you to choose a password please.</p>
+		<p class="success">Looks good.</p>
+	</div>
+    <div class="input-field two-per-line">
+		<label><span>Expiry Date</span>
+			<select name="cardExpiry-month"  required="required"  data-loom-validators="monthAndYearInFuture" placeholder=""  data-loom-type="monthAndYear" >
+            <option value="01">01</option>
+            <option value="02">02</option>
+            <option value="03">03</option>
+            <option value="04">04</option>
+            <option value="05">05</option>
+            <option value="06">06</option>
+            <option value="07">07</option>
+            <option value="08">08</option>
+            <option value="09">09</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+            </select>
+            <select name="cardExpiry-year" >
+            <option value="2011">2011</option>
+            <option value="2012">2012</option>
+            <option value="2013">2013</option>
+            <option value="2014">2014</option>
+            <option value="2015">2015</option>
+            <option value="2016">2016</option>
+            
+            </select>
+		</label>
+		<p class="error error-monthAndYearInFuture">Did you enter that date correctly? your card seems to have expired.</p>
+        <p class="error error-required">We meed you to choose a password please.</p>
+		<p class="success">Looks good.</p>
+	</div>
+    <div class="input-field">
+		<label for="selection">
+	    <span>Card type</span></label>
+	      <select name="cardType">
+		  <option value="Visa">Visa</option>
+		  <option value="Mastercard">Mastercard</option>
+		</select>
+		<p class="success">Sorted.</p>
+       </div>
+	<div class="input-field">
+		<label><span>Do you own a dog?</span>
+			<input name="hasDog"  type="checkbox" />
+		</label>
+	</div>
+	<div class="input-field">
+		<label><span>Dog's name:</span>
+			<input name="dogname" data-loom-required-when-disabled-otherwise="hasDog" placeholder="" type="text" />
+		</label>
+		<p class="error  error-name">Just letters, spaces and apostrophes please!</p>
+		<p class="disabled">Not required as you said you don't own a dog</p>
+		<p class="error  error-depends">You said you had a dog, so we need its name please.</p>
+		<p class="success">Cool.</p>
+	</div>
+	<div class="input-field">
+		<label><span>Dog's age</span>
+			<input name="dogage" data-loom-required-when-disabled-otherwise="hasDog"  type="number" max="9" min="1" data-loom-add-controls="true" />
+		</label>
+		<p class="error  error-number ">Age needs to be a number please.</p>
+		<p class="disabled">Not required as you said you don't own a dog</p>
+		<p class="error  error-depends">You said you own a dog, so we need its age please (a number).</p>
+		<p class="error  error-max">Your dog can't possibly be older than 9.</p>
+		<p class="error error-min">Your dog can't possibly be younger than 1</p>
+		<p class="success">Sorted.</p>
+	</div>
+	</fieldset>
+	<fieldset>
+	<legend>This section is just random questions.</legend>
+		<div class="input-field">
+		<label for="selection">
+	    <span>Enquiry type</span></label>
+	        <select name="selection">
+		  <option value="JobEnquiry">Job Enquiry</option>
+		  <option value="GeneralQuestion">General Question</option>
+		</select>
+		<p class="success">Sorted.</p>
+       </div>
+	   <div class="input-field">
+		<label><span>Nature of your enquiry</span>
+		<input type="text" name="nature" data-loom-required-when="selection=JobEnquiry" placeholder="e.g. Personal"></label>
+		<p class="error  error-depends">This field is required when you select an enquiry type of JobEnquiry</p>
+		<p class="success">Sorted.</p>
+	</div>
+    <div class="input-field">
+		<label><span>Do you agree to our terms and conditions?</span>
+			<input name="termsAgree"  type="checkbox" required="required" />
+            <p class="error-required">You need to agree to our terms and conditions before you can continue</p>
+		</label>
+	</div>
+	   
+	</fieldset>
+	<button type="submit">UPDATE</button>
+	<button type="reset">CLEAR</button>
+	
+	<div class="form-messages"> <!-- form messages global to the form -->
+		<p class="form-error-message warning-msg">Sorry! There was an error adding your detals, please check your internet connection and maybe try again later.</p>
+		<p class="form-invalid-message warning-msg">Ooops! looks like there are some errors on the form.</p>
+		<p class="form-success-message success-msg">Awesome, everything updated successfully.</p>
+		<p class="form-pending-message info-msg">Updating, please wait.</p>
+	</div>
+	
+</form>
+
+<div id="qunit"></div>
+  <div id="qunit-fixture"></div>
+
+<br/>
+<br/>
+<br/>
+<br/>
+<form class="loom-form" data-loom-model="customerRegister" data-loom-action="somesubaction" data-loom-data-type="json" action="/controller-url" novalidate >
+<h1>loom.js<small>a javascript form library</small></h1>
+	<fieldset>
+	<div class="input-field">
+		<label><span>Email</span>
+			<input name="email"  type="email" required="required"  placeholder="Your email"  />
+		</label>
+		<p class="error error-email">hmmm that doesn't look like a valid email address at the moment.</p>
+		<p class="error error-required">We need to know your email before you can continue</p>
+		<p class="success">Awesome.</p>
+	</div>
+	<div class="input-field">
+		<label><span>Confirm Email</span>
+			<input name="email"  type="email" required="required" placeholder="Confirm email" data-loom-confirm="email" />
+		</label>
+		<p class="error error-email">hmmm that doesn't look like a valid email address at the moment.</p>
+		<p class="error error-required">We need to know your email before you can continue</p>
+		<p class="error error-confirm">Just check those emails match</p>
+		<p class="success">Cool.</p>
+	</div>
+	
+	<div class="input-field">
+		<label><span>Password</span>
+			<input name="password"  type="password" required="required"  placeholder="Choose a password"  data-loom-validators="passwordPolicyStrict" />
+		</label>
+		<p class="error error-passwordPolicyStrict">Password needs to be 8 letters or more, with one uppercase and one number please.</p>
+		<p class="error error-required">We need you to pick a password before you can continue.</p>
+		<p class="success">Awesome.</p>
+	</div>
+	<div class="input-field">
+		<label><span>Confirm Password</span>
+			<input name="confirm-password"  type="password" required="required" placeholder="Confirm your password" data-loom-confirm="password" />
+		</label>
+		<p class="error error-required">We need you to confirm your email before you can continue</p>
+		<p class="error error-confirm">Just check those passwords match</p>
+		<p class="success">Cool.</p>
+	</div>
+	</fieldset>
+	<fieldset>
+	
+	<div class="input-field">
+		<label><span>D.O.B</span>
+			<input name="dateOfBirth"  type="date" required="required"  placeholder="Type anything"  />
+		</label>
+		<p class="error-date">hmmmm we need a date in the dd/mm/yyyy format please</p>
+		<p class="error-required">We need a date of birth for your record please.</p>
+		<p class="success">Looks good.</p>
+	</div>
+	
+	<div class="input-field">
+		<label for="selection">
+	    <span>Gender</span></label>
+	        <select name="gender">
+		  <option value="Male">Male</option>
+		  <option value="Female">Female</option>
+		</select>
+		<p class="success">Sorted.</p>
+       </div>
+	   
+	<div class="input-field">
+		<label><span>Do you have a tesco clubcard?</span>
+			<input name="hasClubCard"  checked="checked" type="checkbox" />
+		</label>
+	</div>
+	
+	<div class="input-field">
+		<label><span>Club Card Number</span>
+			<input name="pass"  type="text" required="required"  placeholder="Enter your clubcard card number"  data-loom-required-when-disabled-otherwise="hasClubCard" />
+		</label>
+		<p class="error-required">We need your club card number if you have one.</p>
+		<p class="disabled">We don't need your clubcard number if you don't have one.</p>
+		<p class="success">Looks good.</p>
+	</div>
+	
+	</fieldset>
+	
+
+	<button type="submit">UPDATE</button>
+	<button type="reset">CLEAR</button>
+	
+	<div class="form-messages"> <!-- form messages global to the form -->
+		<p class="form-error-message warning-msg">Sorry! There was an error adding your detals, please check your internet connection and maybe try again later.</p>
+		<p class="form-invalid-message warning-msg">Hmmm... looks like you filled out some of the fields wrong, just check that they are all correct.</p>
+		<p class="form-success-message success-msg">Awesome, everything updated successfully.</p>
+		<p class="form-pending-message info-msg">Updating, please wait.</p>
+	</div>
+	
+</form>
+
+
+<br/>
+<br/>
+<br/>
+<br/>
+<form class="loom-form" data-loom-model="customerRegister" data-loom-action="somesubaction" data-loom-data-type="json" action="/controller-url" novalidate >
+<h1>loom.js<small>a javascript form library</small></h1>
+	<fieldset>
+	<div class="input-field">
+		<label><span>Name on card</span>
+			<input name="Name"  type="text" required="required"  placeholder="Name as it appears on your card"  />
+		</label>
+		<p class="error-text">Should just be text please.</p>
+		<p class="error-required">We need your name to accept payment</p>
+		<p class="success">Awesome.</p>
+	</div>
+	
+	
+	
+	<div class="input-field">
+		<label><span>Card Number</span>
+			<input name="cardNumber"  type="text" required="required" placeholder="Your card number" data-loom-validators="creditCardNumber" />
+		</label>
+		<p class="error-creditCardNumber">Needs to be a valid credit card number please (no spaces or dashes)</p>
+		<p class="error-required">We need a valid credit card number to accept payment</p>
+		<p class="success">Cool.</p>
+	</div>
+	
+		
+	<div class="input-field">
+		<label><span>Expiry date</span>
+			<input name="expiryDate"  type="month" required="required"  min="2014-01" max="2024-12" step="1" value="2014-02" />
+		</label>
+		<p class="error-date">hmmmm we need a date in the dd/mm/yyyy format please</p>
+		<p class="error-required">We need an expiry date to check your card hasn't expired.</p>
+		<p class="success">Looks good.</p>
+	</div>
+	
+	
+	<div class="input-field">
+		<label for="selection">
+	    <span>Card Type</span></label>
+	        <select name="cardType">
+		  <option value="Masestro">Maestro</option>
+		  <option value="Visa">Visa</option>
+		</select>
+		<p class="success">Sorted.</p>
+       </div>
+	   
+	   <div class="input-field disabled">
+		<label><span>CVC</span>
+			<input disabled name="cardNumber"  type="text" required="required" placeholder="Your card number" data-loom-required-when-disabled-otherwise="cardType=Visa" />
+		</label>
+		<p class="error-creditCardNumber">Needs to be a valid credit card number please (no spaces or dashes)</p>
+		<p class="error-required">We need a valid CVC number to accept payment</p>
+		<p class="disabled">CVC is only required for Visa cards</p>
+		<p class="success">Cool.</p>
+	</div>
+    
+    <div class="input-field">
+		<label><span>Choose a colour</span>
+		<input type="radio" name="colour" value="blue"> blue
+		<input type="radio" name="colour" value="red"> red
+		</label>
+		<p class=" error-required">This field may not be blank.</p>
+		<p class="success">Sorted.</p>
+	</div>
+		<div class="input-field">
+		<label><span>Choose a day</span></label>
+		<input type="radio" name="delivery-day"  value="monday"> monday
+		<input type="radio" name="delivery-day" required="required" value="tuesday"> tuesday
+		<p class="error-required">This field may not be blank.</p>
+		<p class="success">Sorted.</p>
+		</div>
+	   
+	</fieldset>
+	
+
+	<button type="submit">UPDATE</button>
+	<button type="reset">CLEAR</button>
+	
+	<div class="form-messages"> <!-- form messages global to the form -->
+		<p class="form-error-message warning-msg">Sorry! There was an error adding your detals, please check your internet connection and maybe try again later.</p>
+		<p class="form-invalid-message warning-msg">Hmmm... looks like you filled out some of the fields wrong, just check that they are all correct.</p>
+		<p class="form-success-message success-msg">Awesome, everything updated successfully.</p>
+		<p class="form-pending-message info-msg">Updating, please wait.</p>
+	</div>
+	
+</form>
+
+</body>
+</html>
