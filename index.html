@@ -12,10 +12,26 @@
 <p class="note">ALPHA : WORK IN PROGRES</p>
 <code><pre>
  require(["loom/loomResources"], function (Res) {
-       alert(Res.getString("OK")); 
-        
+       alert(Res.getString("TEST")); 
+       alert(Res.getString("AddedToBasket", "a new hat")); 
     });
+    
+    ...
+    
+ //in loomResources.js
+ resourceLookup = { //This is where the resources live. could be populated via JSON from a server URL
+        "TEST" : {
+            "en-gb" : "language is en-gb",
+            "fr" : "language is fr"
+        },
+        "AddedToBasket" : {
+            "en" : "Added {0} to your basket"
+        }
+    };
 </pre></code>
+<h2>Example (work in progress)</h2>
+<p><button class="res-test-1" type="button">Try It (1)</button><br/>
+<button class="res-test-2" type="button">Try It (2)</button><br/></p>
 </section>
 <section>
 <h1>Loom Alerts</h1>
@@ -181,7 +197,7 @@ a redirect_url node: This contains the URL to redirect the client to. If present
 <p></p>
 </section>
 <section>
-<h2>Set Up</h2>
+<h2>Loom: Set Up</h2>
 <p>the loom folder containing the js should be dropped into the projects /js folder. The css folder including the .less files should be dropped into the projects /css folder.</p>
 <p>In your main less file you should import loom</p>
 <code>@import "loom/loom";</code>

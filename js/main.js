@@ -5,7 +5,7 @@ require.config({
 });
 
 
-require(["jquery", "loom/loom"], function($, Loom) {
+require(["jquery", "loom/loom", "loom/loomResources"], function($, Loom, Res) {
 	
     
    
@@ -17,6 +17,14 @@ require(["jquery", "loom/loom"], function($, Loom) {
    
     
 	var loom = new Loom(loomConfig);
+    
+    $(".res-test-1").click(function() {
+        alert(Res.getString("TEST"));
+    });
+    $(".res-test-2").click(function() {
+        alert(Res.getString("AddedToBasket", "a new hat"));
+    });
+    
     
     loom.addOnSuccessCallback("#ResponseHandlerTest", function() {alert("there was a success");} );
     loom.addOnErrorCallback("ResponseHandlerTest", function() {alert("there was some error");} );

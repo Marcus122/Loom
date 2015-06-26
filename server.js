@@ -17,5 +17,5 @@ app.post("/response.json", function(req,res) {
 
 
 app.use(express.static(__dirname));
-
+console.log("go to localhost:8088")
 app.listen(process.env.PORT || 8088);

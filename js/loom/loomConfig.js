@@ -5,6 +5,10 @@ define(["jquery"],function($){
     //This file should be self documenting, please leave the descriptive comments in place.
     //Values shown for options are the defaults.
    return {
+        "DEBUG"               : true,
+        
+        "CONSOLE"             : ((window.console = window.console) || { log : function() {}} ), //use this for console logging so it only gets logged if in debug mode.
+       
         "FORM_PENDING_CLASS"  :  "form-pending",           // Class added to a form while it is awaiting validation / server response.
 		
         "FORM_ERROR_CLASS"    :  "form-error",           // Class added to a form where the form post experiences an error.
@@ -23,8 +27,8 @@ define(["jquery"],function($){
 		
         "JUMP_TO_INVALID_FIELD_ON_SUBMIT" : true, //When trying to submit a form that is invalid, the first invalid field is focussed.
         
-        "AUTO_HANDLE_SERVER_RESPONSE" : true, //server responses are in the expected format and are handled automatically by loom. 
+        "USE_LOOM_RESPONSE_HANDLER" : true, //This at the form level. - not implemented at the moment
         
-        "USE_LOOM_RESPONSE_HANDLER_BY_DEFAULT" : true
+        "USE_LOOM_RESPONSE_HANDLER_BY_DEFAULT" : true // GLOBAL value that turns this on for all forms
     } 
 });

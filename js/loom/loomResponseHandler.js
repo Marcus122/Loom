@@ -1,11 +1,12 @@
-define(["jquery", "loom/loomAlerts"], function($, alerts){
+define(["jquery", "loom/loomAlerts", "loom/loomConfig"], function($, alerts, config){
     
     
     return function Class(theForm) {
-        //under development, commented out so not accidentally used in a production environment,
-        
-        /*
+        //under development, not production ready.
+
         var form = theForm;
+        
+        var console = config.CONSOLE; //safe console logging;
 
         function processServerReponse(response) {
             if (shouldIgnoreResponse(response)){         
@@ -15,11 +16,9 @@ define(["jquery", "loom/loomAlerts"], function($, alerts){
             if (!res) { 
                 return processHardError(response);
             }
-            
             if (res.error) {
                 res.errorType = "soft_error"; //In the case of a soft error, we still continue and process the response.
             }
-
             processHTML(res);
             processFieldErrors(res.meta);
             processMessage(res);
@@ -28,7 +27,6 @@ define(["jquery", "loom/loomAlerts"], function($, alerts){
         }
         
         //For now we don't bother trying to handle XML responses, although this would be possible I think.
-        // TODO: in future we'll have something as a flag in the config file e.g. bypass responseHandler.
         function shouldIgnoreResponse(response) {
             if (form.dataType != "json") {
                 return true;
@@ -95,7 +93,7 @@ define(["jquery", "loom/loomAlerts"], function($, alerts){
                         $target.append($source);
                     } else {
                         if (!(method == "append" || method == "prepend")) {
-                            console.log("Loom: error processing HTML meta entries in server response, invalid method name");
+                            //console.log("Loom: error processing HTML meta entries in server response, invalid method name");
                             return;
                         }
                         $target[method]($source);
@@ -159,14 +157,14 @@ define(["jquery", "loom/loomAlerts"], function($, alerts){
             if (!meta.redirect_url) {
                 return;
             }
-            alert("In future you would be redirected to  " + meta.redirect_url);
+            window.location.href = meta.redirect_url;
         }
         
         //API
         return {
             //takes the response, and processes. Returns the response.
             processServerReponse:processServerReponse,
-        }*/
+        }
     
     }
 
