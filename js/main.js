@@ -14,6 +14,8 @@ require(["jquery", "loom/loom"], function($, Loom) {
 		
 	}
 	
+   
+    
 	var loom = new Loom(loomConfig);
     
     loom.addOnSuccessCallback("#ResponseHandlerTest", function() {alert("there was a success");} );

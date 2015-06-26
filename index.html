@@ -7,7 +7,16 @@
  
 </head>
 <body>
-
+<section>
+<h1>Loom Resources</h1>
+<p class="note">ALPHA : WORK IN PROGRES</p>
+<code><pre>
+ require(["loom/loomResources"], function (Res) {
+       alert(Res.getString("OK")); 
+        
+    });
+</pre></code>
+</section>
 <section>
 <h1>Loom Alerts</h1>
 <p>Loom alerts is a simple library with a javscript API for displaying alerts to users</p>
@@ -19,6 +28,7 @@
 <code><pre>
 require(["loom/loomAlerts"], function(Alerts) {
     //your code in here.
+    //Alerts.showSuccessMessage("Your success message");
 });
 </pre></code>
 <p>In addition, @include the CSS from your main less stylesheet.</p>
@@ -49,6 +59,13 @@ require(["loom/loomAlerts"], function(Alerts) {
 <p>Shows an error message, that will remain until the use clicks OK to dismiss it.</p>
 <p>Try It:</p>
 <button class="showPersistentErrorMessage">Show Message</button>
+<h2>Coming Soon</h2>
+<h3>showInfoMessage</h3>
+<h3>showWarningMessage</h3>
+<h3>showConfirmationMessage(messageHTMLOrText, ConfirmCallback, CancelCallback, (messages))</h3>
+<p>Allows you to display a confirmation message to the user. The confirm Callback is executed if the user clicks ok, the cancel callback is called if the user clicks cancel.<br/>
+An additional messages parameter can be passed in as the button labels. { 'confirm' : 'Continue..', 'cancel' : 'Cancel' }
+</p>
 </section>
 
 
@@ -69,7 +86,10 @@ require(["loom/loomAlerts"], function(Alerts) {
 <section>
 <h2>TESTING: loomResponseHandler</h2>
 <p class="note">
-Under Development
+Under Development<br/>
+Tom's notes: next thing to look at is a library to convert XML into JSON. This way we can convert all of the server responses into a common format on the client rather than worrying about the return format from the server. One issue is that HTML nodes would have to be exempted and kept as HTML.<br/>
+Other stuff we need to do is: add the directives so that messages for errors can live in the form itself and just get pulled out into the alerts.
+Also add directives that specify that different form states should be displayed as messages rather than static errors at the bottom of the form or whatever.
 </p>
 
 <div class="example">
@@ -85,6 +105,80 @@ Under Development
     <div id="test2">This text should be replaced by text from the server</div>
     <div id="test1">The server response should append text to this div.<br/></div>
 </div>
+</section>
+<section>
+<h2>A note on server responses implementation (work in progress)</h2>
+<div class="note">Server response standardisation is planned for the next version.</div>
+<p>As loom expands in functionality, server responses will be more standardized to make it easier for the server response to dictate the behaviour of the client in a predictable way.</p>
+<p>This functionality is planned for the next version of loom.</p>
+<p>The server responses (both XML and JSON) will follow a standard format as follows</p>
+a response node at the root level.
+a data node containing the actual data of the response.
+an HTML node containing any valid HTML required in the response.
+a meta node, containing information about the response and directives for the client.
+The meta node contains information like the following:
+a message node: this contains a text / HTML message associated with the response, this could be a success message, an error message or something else. If this node is present and non empty, loom should show the message as an alert to the user. The 'type' of the message will be dictated by whether the response was a success or error.
+a success node : present with a 'truthy' value if the response is a success
+an error node : presnet with a 'truthy' value if the response signifies an error
+a field_specific_errors node: contains child "field_specific_error" nodes which allows the server to communicate per field errors to the client. The details of this node are outlined in more detail below.
+a html_meta_entries node: This contains directives for the HTML in the HTML node and is described in more detail below.
+a redirect_url node: This contains the URL to redirect the client to. If present the client will redirect to this URL.
+<h4>An example server response</h4>
+<h4>JSON</h4>
+<code><pre>
+{ 
+    "response" : {
+        "error" : "X", // "success" : "X" if the post had been successful.
+        "data" : {
+            myObject : {}, myOtherObject : {} //the usual json return data
+        },
+        "html" : "&lt;div id='test'&gt;Some HTML as a string&lt;/div&gt;
+            &lt;div id='other-test'&gt;some more HTML&lt;/div&gt;",
+        "meta" : { 
+            "message" : { // A message associated with the response
+                "content" : "There was an error creating your user account",
+                "type" : "persistent" // persistent | transient
+                "class" : "info big" //additional classes to add.
+            }
+            "redirect_url" : "", //if populated would cause a redirect to that url.
+            "html_meta_entries" : [ //these are directives for DOM manipulation
+                {
+                    "source_selector" : "#test", //for the HTML in this response
+                    "target_selector" : ".basket", //for the DOM
+                    "method" : "append" // append | prepend | replace
+                },
+                {
+                    "source_selector" : "#other-test",
+                    "target_selector" : ".notification-area",
+                    "method" : "replace"
+                }
+            ],
+            "field_errors" : [ // server side form validation errors.
+                { 
+                    "field" :   "email",
+                    "message" : "this email address is already in use."
+                },
+                {
+                    "field" :   "account number",
+                    "message" : "your account number appears to be invalid."
+                }
+            ],
+            "cache" : "" // in the future we can add some cache control.
+        }
+    } 
+}
+</pre>
+</code>
+<h4>Outline for loom handling the response</h4>
+<p>The outline for loom handling the response would be as follows.</p>
+<p>First use the meta error vs success node to determine if the post was a success or error.</p>
+<p>Next grab the HTML and load into a jquery object</p>
+<p>For each HTML meta entry, grab the HTML specified by the source selector, and load into the target selector using the method specified.</p>
+<p>For each field error entry. Add class 'server-error' to that input field. add a .server-error message and populate it with the value of message (causing it to be displayed next to the input field).</p>
+<p>Grab the message text, and load into a message to be displayed, adding the classes specified</p>
+<p>Once all this is done, call any onSuccess or onError callbacks.</p>
+<p>Finally, if a redirect URL was present, redirect to that URL.</p>
+<p></p>
 </section>
 <section>
 <h2>Set Up</h2>
@@ -652,80 +746,7 @@ require("path/to/loom" function(Loom) { <br/>
 <p>Loom is a singleton so you can require it whenever you need API access.</p>
 <p><b>In addition to any API useage, a loom instance should be created at page load (usually within main.js) to allow it to bind to the loom-forms on the page.</b></p>
 </section>
-<section>
-<h2>A note on server responses</h2>
-<div class="note">Server response standardisation is planned for the next version.</div>
-<p>As loom expands in functionality, server responses will be more standardized to make it easier for the server response to dictate the behaviour of the client in a predictable way.</p>
-<p>This functionality is planned for the next version of loom.</p>
-<p>The server responses (both XML and JSON) will follow a standard format as follows</p>
-a response node at the root level.
-a data node containing the actual data of the response.
-an HTML node containing any valid HTML required in the response.
-a meta node, containing information about the response and directives for the client.
-The meta node contains information like the following:
-a message node: this contains a text / HTML message associated with the response, this could be a success message, an error message or something else. If this node is present and non empty, loom should show the message as an alert to the user. The 'type' of the message will be dictated by whether the response was a success or error.
-a success node : present with a 'truthy' value if the response is a success
-an error node : presnet with a 'truthy' value if the response signifies an error
-a field_specific_errors node: contains child "field_specific_error" nodes which allows the server to communicate per field errors to the client. The details of this node are outlined in more detail below.
-a html_meta_entries node: This contains directives for the HTML in the HTML node and is described in more detail below.
-a redirect_url node: This contains the URL to redirect the client to. If present the client will redirect to this URL.
-<h4>An example server response</h4>
-<h4>JSON</h4>
-<code><pre>
-{ 
-    "response" : {
-        "error" : "X", // "success" if the post had been successful.
-        "data" : {
-            myObject : {}, myOtherObject : {} //the usual json return data
-        },
-        "html" : "&lt;div id='test'&gt;Some HTML as a string&lt;/div&gt;
-            &lt;div id='other-test'&gt;some more HTML&lt;/div&gt;",
-        "meta" : { 
-            "message" : { // A message associated with the response
-                "content" : "There was an error creating your user account",
-                "type" : "persistent" // persistent | transient
-                "class" : "info big" //additional classes to add.
-            }
-            "redirect_url" : "", //if populated would cause a redirect to that url.
-            "html_meta_entries" : [ //these are directives for DOM manipulation
-                {
-                    "source_selector" : "#test", //for the HTML in this response
-                    "target_selector" : ".basket", //for the DOM
-                    "method" : "append" // append | prepend | replace
-                },
-                {
-                    "source_selector" : "#other-test",
-                    "target_selector" : ".notification-area",
-                    "method" : "replace"
-                }
-            ],
-            "field_errors" : [ // server side form validation errors.
-                { 
-                    "field" :   "email",
-                    "message" : "this email address is already in use."
-                },
-                {
-                    "field" :   "account number",
-                    "message" : "your account number appears to be invalid."
-                }
-            ],
-            "cache" : "" // in the future we can add some cache control.
-        }
-    } 
-}
-</pre>
-</code>
-<h4>Outline for loom handling the response</h4>
-<p>The outline for loom handling the response would be as follows.</p>
-<p>First use the meta error vs success node to determine if the post was a success or error.</p>
-<p>Next grab the HTML and load into a jquery object</p>
-<p>For each HTML meta entry, grab the HTML specified by the source selector, and load into the target selector using the method specified.</p>
-<p>For each field error entry. Add class 'server-error' to that input field. add a .server-error message and populate it with the value of message (causing it to be displayed next to the input field).</p>
-<p>Grab the message text, and load into a message to be displayed, adding the classes specified</p>
-<p>Once all this is done, call any onSuccess or onError callbacks.</p>
-<p>Finally, if a redirect URL was present, redirect to that URL.</p>
-<p></p>
-</section>
+
 <section>
 <h2>Loom API Methods v0.1</h2>
 <h3>addOnSuccessCallback(formidOrjQueryElement, myCallback)</h3>

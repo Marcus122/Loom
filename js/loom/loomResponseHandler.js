@@ -55,7 +55,7 @@ define(["jquery", "loom/loomAlerts"], function($, alerts){
                 console.log("Loom Error: the server returned an error for the form post ajax request, error code was: " + status.toString() + " for URL: " + form.url.toString());
                 
             } else {
-                respone.error = "loom_response_format_error";
+                response.error = "loom_response_format_error";
                 console.log("Loom response format error: no 'response' at root of object");
                 
             }
