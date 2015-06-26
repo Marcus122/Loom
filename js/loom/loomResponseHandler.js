@@ -2,7 +2,9 @@ define(["jquery", "loom/loomAlerts"], function($, alerts){
     
     
     return function Class(theForm) {
+        //under development, commented out so not accidentally used in a production environment,
         
+        /*
         var form = theForm;
 
         function processServerReponse(response) {
@@ -164,7 +166,7 @@ define(["jquery", "loom/loomAlerts"], function($, alerts){
         return {
             //takes the response, and processes. Returns the response.
             processServerReponse:processServerReponse,
-        }
+        }*/
     
     }
 
